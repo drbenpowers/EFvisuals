@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synaptic Pruning &amp; Network Refinement</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1A1F36;
+    color: #FFFFFF;
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh;
+    padding: 24px;
+    overflow-x: hidden;
+  }
+  .header { border-top: 3px solid #3BA5A5; padding-top: 16px; margin-bottom: 20px; }
+  .header h1 { font-size: 28px; font-weight: bold; letter-spacing: 0.5px; }
+  .header p { font-size: 14px; color: #8899AA; margin-top: 6px; font-family: Calibri, Arial, sans-serif; }
+  .main { display: flex; gap: 32px; }
+  .viz-container { flex: 0 0 600px; }
+  .viz-container svg { background: rgba(0,0,0,0.2); border-radius: 8px; transition: opacity 0.3s; }
+  .stage-buttons { display: flex; gap: 4px; margin-top: 12px; font-family: Calibri, Arial, sans-serif; }
+  .stage-btn {
+    flex: 1; padding: 10px 8px; background: rgba(255,255,255,0.05);
+    border: 1px solid #4A5580; border-radius: 6px; color: #AABBCC;
+    cursor: pointer; font-size: 12px; transition: all 0.2s;
+    font-family: Calibri, Arial, sans-serif;
+  }
+  .stage-btn.active {
+    background: #3BA5A5; border-color: #3BA5A5; color: #FFFFFF; font-weight: bold;
+  }
+  .stage-btn:hover:not(.active) { background: rgba(255,255,255,0.1); }
+  .info-panel { flex: 1; font-family: Calibri, Arial, sans-serif; }
+  .stage-info {
+    background: rgba(255,255,255,0.04); border-radius: 8px;
+    padding: 20px 24px; border-left: 4px solid #E8782A; margin-bottom: 20px;
+    transition: opacity 0.3s;
+  }
+  .stage-age { font-size: 11px; color: #E8782A; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; }
+  .stage-title { font-size: 22px; margin-bottom: 4px; font-family: Georgia, serif; }
+  .stage-subtitle { font-size: 14px; color: #AABBCC; margin-bottom: 12px; font-style: italic; }
+  .stage-desc { font-size: 14px; color: #AABBCC; line-height: 1.6; }
+  .network-phase {
+    display: flex; gap: 12px; margin-bottom: 20px;
+  }
+  .phase-box {
+    flex: 1; border-radius: 8px; padding: 14px 16px; text-align: center;
+  }
+  .phase-box.teal { background: rgba(42, 139, 139, 0.15); }
+  .phase-box.orange { background: rgba(232, 120, 42, 0.12); }
+  .phase-box.neutral { background: rgba(255,255,255,0.04); }
+  .phase-label { font-size: 14px; font-weight: bold; font-family: Georgia, serif; }
+  .phase-sublabel { font-size: 11px; color: #8899AA; margin-top: 4px; }
+  .phase-box.active-phase { border: 1.5px solid rgba(232, 120, 42, 0.5); }
+  .ef-callout {
+    background: rgba(232, 120, 42, 0.08); border: 1px solid rgba(232, 120, 42, 0.25);
+    border-radius: 8px; padding: 16px 20px;
+  }
+  .ef-callout-title { font-size: 13px; font-weight: bold; color: #E8782A; margin-bottom: 6px; }
+  .ef-callout-text { font-size: 13px; color: #AABBCC; line-height: 1.6; }
+  .legend {
+    display: flex; gap: 20px; margin-top: 16px; font-size: 11px; color: #8899AA;
+    font-family: Calibri, Arial, sans-serif;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-line-strong { width: 24px; height: 3px; background: #2A8B8B; border-radius: 2px; }
+  .legend-line-weak { width: 24px; height: 2px; background: #7A88AA; border-radius: 2px; opacity: 0.6; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: #E8782A; }
+  .footer {
+    margin-top: 16px; padding-top: 8px; border-top: 1px solid #2B3255;
+    display: flex; justify-content: space-between; font-size: 10px; color: #8899AA;
+    font-family: Calibri, Arial, sans-serif;
+  }
+  .footer .copy { color: #556688; }
+  .model-note {
+    font-size: 10px; color: #667799; font-style: italic; margin-top: 4px;
+    font-family: Calibri, Arial, sans-serif;
+  }
+  .region-note {
+    font-size: 11px; color: #8899AA; margin-top: 10px; padding: 8px 12px;
+    background: rgba(255,255,255,0.03); border-radius: 6px; line-height: 1.5;
+    font-family: Calibri, Arial, sans-serif;
+  }
+  .region-note strong { color: #AABBCC; }
+
+  @media (max-width: 1100px) {
+    .main { flex-direction: column; }
+    .viz-container { flex: none; width: 100%; max-width: 600px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Synaptic Pruning &amp; Network Refinement</h1>
+  <p>Use strengthens; lack of use increases the likelihood of pruning — and why EF instruction matters</p>
+</div>
+
+<div class="main">
+  <div class="viz-container">
+    <svg id="network" width="600" height="440"></svg>
+    <div class="model-note">Illustrative model of network refinement — actual pruning is region-specific and experience-dependent</div>
+    <div class="stage-buttons" id="stageButtons"></div>
+  </div>
+  <div class="info-panel">
+    <div class="stage-info" id="stageInfo">
+      <div class="stage-age" id="stageAge"></div>
+      <h2 class="stage-title" id="stageTitle"></h2>
+      <p class="stage-subtitle" id="stageSubtitle"></p>
+      <p class="stage-desc" id="stageDesc"></p>
+    </div>
+    <div class="network-phase" id="networkPhase">
+      <div class="phase-box teal" id="phase0">
+        <div class="phase-label" style="color:#3BA5A5">Dense</div>
+        <div class="phase-sublabel">Many connections,<br>little specialization</div>
+      </div>
+      <div class="phase-box orange" id="phase1">
+        <div class="phase-label" style="color:#E8782A">Selective</div>
+        <div class="phase-sublabel">Active pathways<br>strengthening</div>
+      </div>
+      <div class="phase-box neutral" id="phase2">
+        <div class="phase-label" style="color:#FFFFFF">Efficient</div>
+        <div class="phase-sublabel">Fast, specialized,<br>well-myelinated</div>
+      </div>
+    </div>
+    <div class="ef-callout">
+      <div class="ef-callout-title">Why This Matters for EF Instruction</div>
+      <p class="ef-callout-text" id="efText"></p>
+    </div>
+    <div class="region-note" id="regionNote"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-line-strong"></div> Frequently activated (strengthened)</div>
+      <div class="legend-item"><div class="legend-line-weak"></div> Less active (more likely to be pruned)</div>
+      <div class="legend-item"><div class="legend-dot"></div> Signal transmission</div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>Based on Huttenlocher (1979); Giedd et al. (1999); Casey, Tottenham, Liston &amp; Durston (2005); Fields (2008)</span>
+  <span class="copy">© Powers, B. 2026</span>
+</div>
+
+<script>
+const COLORS = {
+  neuronActive: "#3BA5A5",
+  neuronInactive: "#5A6890",
+  synapseStrong: "#2A8B8B",
+  synapseWeak: "#7A88AA",
+  accent: "#E8782A",
+  white: "#FFFFFF",
+  lightGray: "#AABBCC",
+  midGray: "#8899AA",
+};
+
+const stages = [
+  {
+    title: "Early Childhood",
+    subtitle: "Dense, broadly connected network",
+    description: "The young brain produces an abundance of synaptic connections — building a rich, broadly wired network. This abundance creates potential, but pathways are not yet refined or specialized.",
+    age: "Ages 2–7",
+    pruningLevel: 0,
+    activePhase: 0,
+    efText: "The brain is ready to wire for anything — but without intentional activation of EF pathways (inhibition, planning, monitoring), those connections hold no advantage over any others.",
+    regionNote: "<strong>Region-specific timing:</strong> Sensory and motor regions begin refining earliest. The prefrontal cortex — where EF processes are centered — is still in its earliest stages of development."
+  },
+  {
+    title: "Middle Childhood",
+    subtitle: "Experience begins to shape the network",
+    description: "Frequently used connections strengthen and begin to myelinate — increasing transmission speed. Less active pathways weaken. Repeated practice and explicit instruction begin to shape which pathways are prioritized.",
+    age: "Ages 7–12",
+    pruningLevel: 0.3,
+    activePhase: 0,
+    efText: "This is a critical period. Students who regularly practice inhibiting impulses, planning tasks, and monitoring their work are strengthening and myelinating those neural pathways. Explicit EF instruction gives these connections the activation they need to be prioritized.",
+    regionNote: "<strong>Region-specific timing:</strong> Language and spatial reasoning regions are actively refining. Prefrontal circuits supporting EF are developing but still far from mature — making this a high-leverage window for instruction."
+  },
+  {
+    title: "Adolescence",
+    subtitle: "The brain prioritizes efficiency",
+    description: "The brain increasingly prioritizes efficiency — strengthening frequently used pathways while reducing less active ones and improving communication speed through continued myelination. This is refinement—not just removal, but increased efficiency.",
+    age: "Ages 12–18",
+    pruningLevel: 0.65,
+    activePhase: 1,
+    efText: "Refinement is shaped by experience, not importance. Students who haven't had consistent opportunities to practice EF controls may not fully develop or efficiently recruit the pathways that support self-directed learning.",
+    regionNote: "<strong>Region-specific timing:</strong> Many brain regions are well along in refinement, but the prefrontal cortex is still actively restructuring. This is why adolescents can show adult-level ability in some areas while still developing EF capacity."
+  },
+  {
+    title: "Young Adulthood",
+    subtitle: "Streamlined and well-myelinated",
+    description: "The prefrontal cortex — the seat of executive function — is the last major region to complete this refinement process. Remaining pathways are fast, strong, and well-myelinated. Pathways that weren't consistently activated may be less efficient or less accessible.",
+    age: "Ages 18–25+",
+    pruningLevel: 0.9,
+    activePhase: 2,
+    efText: "The prefrontal cortex finishes maturing last — meaning EF pathways are among the final connections shaped by this process. Every year of intentional EF practice through adolescence contributes to whether these circuits are efficiently organized and recruitable.",
+    regionNote: "<strong>Region-specific timing:</strong> Sensory and motor systems matured years ago. The prefrontal cortex is only now completing its refinement — which is why EF instruction remains impactful well into the late teens and early twenties."
+  }
+];
+
+// Seeded random for consistent layout
+let seed = 42;
+function seededRandom() {
+  seed = (seed * 16807 + 0) % 2147483647;
+  return (seed - 1) / 2147483646;
+}
+
+// Generate neurons
+function generateNeurons(count, cx, cy, radius) {
+  const neurons = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + seededRandom() * 0.3;
+    const r = radius * (0.5 + seededRandom() * 0.5);
+    neurons.push({
+      id: i,
+      x: cx + Math.cos(angle) * r,
+      y: cy + Math.sin(angle) * r,
+      size: 4 + seededRandom() * 4,
+    });
+  }
+  return neurons;
+}
+
+// Generate synapses
+function generateSynapses(neurons, density) {
+  const synapses = [];
+  let id = 0;
+  for (let i = 0; i < neurons.length; i++) {
+    for (let j = i + 1; j < neurons.length; j++) {
+      const dx = neurons[i].x - neurons[j].x;
+      const dy = neurons[i].y - neurons[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120 && seededRandom() < density) {
+        const isFrequentlyUsed = seededRandom() < 0.35;
+        synapses.push({
+          id: id++,
+          from: i,
+          to: j,
+          strength: isFrequentlyUsed ? 0.7 + seededRandom() * 0.3 : 0.1 + seededRandom() * 0.3,
+          frequentlyUsed: isFrequentlyUsed,
+          dist,
+        });
+      }
+    }
+  }
+  return synapses;
+}
+
+const neurons = generateNeurons(28, 300, 220, 160);
+const allSynapses = generateSynapses(neurons, 0.45);
+let currentStage = 0;
+
+const svg = document.getElementById("network");
+const NS = "http://www.w3.org/2000/svg";
+
+function createSVGElement(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+function renderNetwork(stageIdx) {
+  const stage = stages[stageIdx];
+  const pruningLevel = stage.pruningLevel;
+  svg.innerHTML = "";
+
+  // Compute visible synapses
+  const visibleSynapses = allSynapses.map(s => {
+    if (!s.frequentlyUsed && s.strength < pruningLevel) {
+      return { ...s, pruned: true };
+    }
+    return {
+      ...s,
+      pruned: false,
+      displayStrength: s.frequentlyUsed
+        ? Math.min(1, s.strength + pruningLevel * 0.3)
+        : s.strength * (1 - pruningLevel * 0.5),
+    };
+  });
+
+  const activeNeuronIds = new Set();
+  visibleSynapses.forEach(s => {
+    if (!s.pruned) { activeNeuronIds.add(s.from); activeNeuronIds.add(s.to); }
+  });
+
+  const strongSynapses = visibleSynapses.filter(s => !s.pruned && s.frequentlyUsed);
+  const remainingSynapses = visibleSynapses.filter(s => !s.pruned).length;
+  const totalSynapses = allSynapses.length;
+
+  // Draw synapses — with improved contrast for weak pathways
+  visibleSynapses.forEach(s => {
+    if (s.pruned) return;
+    const n1 = neurons[s.from], n2 = neurons[s.to];
+    const str = s.displayStrength || s.strength;
+
+    let color, width, opacity;
+    if (s.frequentlyUsed) {
+      color = COLORS.synapseStrong;
+      width = 1.5 + str * 2.5;
+      opacity = 0.5 + str * 0.5;
+      // Thicken strong pathways in later stages to show myelination
+      if (stageIdx >= 2) width += 0.8;
+      if (stageIdx >= 3) width += 0.6;
+    } else {
+      // Higher contrast: lighter color and higher base opacity for unused pathways
+      color = COLORS.synapseWeak;
+      width = 0.8 + str * 1.2;
+      opacity = 0.35 + str * 0.25;
+    }
+
+    const line = createSVGElement("line", {
+      x1: n1.x, y1: n1.y, x2: n2.x, y2: n2.y,
+      stroke: color, "stroke-width": width, opacity: opacity, "stroke-linecap": "round"
+    });
+    svg.appendChild(line);
+  });
+
+  // Signal pulses on strong pathways — faster in later stages (myelination)
+  if (stageIdx >= 1) {
+    const pulseDur = stageIdx >= 3 ? "0.35s" : stageIdx >= 2 ? "0.45s" : "0.6s";
+    strongSynapses.slice(0, stageIdx >= 3 ? 8 : 5).forEach(s => {
+      const n1 = neurons[s.from], n2 = neurons[s.to];
+      const circle = createSVGElement("circle", { r: 3, fill: COLORS.accent, opacity: 0.9 });
+
+      const animCx = createSVGElement("animate", {
+        attributeName: "cx", from: n1.x, to: n2.x, dur: pulseDur, repeatCount: "indefinite"
+      });
+      const animCy = createSVGElement("animate", {
+        attributeName: "cy", from: n1.y, to: n2.y, dur: pulseDur, repeatCount: "indefinite"
+      });
+      const animOp = createSVGElement("animate", {
+        attributeName: "opacity", values: "0.9;0.4;0.9", dur: pulseDur, repeatCount: "indefinite"
+      });
+
+      circle.appendChild(animCx);
+      circle.appendChild(animCy);
+      circle.appendChild(animOp);
+      svg.appendChild(circle);
+    });
+  }
+
+  // Draw neurons
+  neurons.forEach(n => {
+    const active = activeNeuronIds.has(n.id);
+    const pulsing = stageIdx >= 2 && active;
+
+    if (active) {
+      const glow = createSVGElement("circle", {
+        cx: n.x, cy: n.y, r: n.size + 6,
+        fill: "none", stroke: COLORS.neuronActive, "stroke-width": 1.5,
+        opacity: pulsing ? 0.7 : 0.3
+      });
+      if (pulsing) {
+        const animR = createSVGElement("animate", {
+          attributeName: "r", values: `${n.size + 4};${n.size + 10};${n.size + 4}`,
+          dur: "2s", repeatCount: "indefinite"
+        });
+        const animOp = createSVGElement("animate", {
+          attributeName: "opacity", values: "0.7;0.2;0.7",
+          dur: "2s", repeatCount: "indefinite"
+        });
+        glow.appendChild(animR);
+        glow.appendChild(animOp);
+      }
+      svg.appendChild(glow);
+    }
+
+    const circle = createSVGElement("circle", {
+      cx: n.x, cy: n.y, r: n.size,
+      fill: active ? COLORS.neuronActive : COLORS.neuronInactive,
+      opacity: active ? 1 : 0.5
+    });
+    svg.appendChild(circle);
+  });
+
+  // Bottom label — qualitative, not fixed count
+  const phaseLabels = ["Dense network", "More selective network", "More selective network", "Efficient network"];
+  const text = createSVGElement("text", {
+    x: 300, y: 425, "text-anchor": "middle", fill: COLORS.midGray,
+    "font-size": 12, "font-family": "Calibri, Arial, sans-serif"
+  });
+  text.textContent = `${stage.age} — ${phaseLabels[stageIdx]}`;
+  svg.appendChild(text);
+
+  // Update info panel
+  document.getElementById("stageAge").textContent = stage.age;
+  document.getElementById("stageTitle").textContent = stage.title;
+  document.getElementById("stageSubtitle").textContent = stage.subtitle;
+  document.getElementById("stageDesc").textContent = stage.description;
+  document.getElementById("efText").textContent = stage.efText;
+  document.getElementById("regionNote").innerHTML = stage.regionNote;
+
+  // Update phase indicator
+  document.querySelectorAll(".phase-box").forEach((el, i) => {
+    el.classList.toggle("active-phase", i === stage.activePhase);
+  });
+}
+
+// Build stage buttons
+const btnContainer = document.getElementById("stageButtons");
+stages.forEach((s, i) => {
+  const btn = document.createElement("button");
+  btn.className = "stage-btn" + (i === 0 ? " active" : "");
+  btn.textContent = s.age;
+  btn.addEventListener("click", () => {
+    if (i === currentStage) return;
+    document.querySelectorAll(".stage-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    svg.style.opacity = "0.5";
+    document.getElementById("stageInfo").style.opacity = "0.3";
+    setTimeout(() => {
+      currentStage = i;
+      renderNetwork(i);
+      svg.style.opacity = "1";
+      document.getElementById("stageInfo").style.opacity = "1";
+    }, 300);
+  });
+  btnContainer.appendChild(btn);
+});
+
+// Initial render
+renderNetwork(0);
+</script>
+</body>
+</html>
