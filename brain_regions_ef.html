@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prefrontal Cortex &amp; Executive Function</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1A1F36;
+    color: #FFFFFF;
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh;
+    padding: 28px 36px;
+    display: flex;
+    flex-direction: column;
+  }
+  .header { border-top: 3px solid #3BA5A5; padding-top: 14px; margin-bottom: 20px; }
+  .header h1 { font-size: 28px; font-weight: bold; }
+  .header p { font-size: 13px; color: #8899AA; margin-top: 5px; font-family: Calibri, Arial, sans-serif; }
+  .content { display: flex; gap: 36px; flex: 1; align-items: flex-start; }
+
+  .brain-container {
+    position: relative;
+    flex: 1;
+    max-width: 620px;
+  }
+  .brain-wrapper {
+    position: relative;
+    background: rgba(0,0,0,0.12);
+    border-radius: 10px;
+    overflow: hidden;
+    /* Crop the brainstem by limiting height */
+    max-height: 440px;
+  }
+  .brain-wrapper img {
+    display: block;
+    width: 100%;
+    height: auto;
+    /* Shift up slightly and crop bottom (brainstem) */
+    margin-top: -10px;
+    margin-bottom: -180px;
+  }
+  .overlay-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .view-label {
+    font-size: 11px; color: #8899AA; text-transform: uppercase; letter-spacing: 2px;
+    font-family: Calibri, Arial, sans-serif; margin-bottom: 8px;
+  }
+
+  .info-panel { width: 340px; font-family: Calibri, Arial, sans-serif; display: flex; flex-direction: column; gap: 12px; }
+  .func-box { border-radius: 8px; padding: 14px 18px; }
+  .func-box.dlpfc { background: rgba(42,139,139,0.12); border: 1px solid rgba(59,165,165,0.35); }
+  .func-box.ofc { background: rgba(232,120,42,0.1); border: 1px solid rgba(232,120,42,0.3); }
+  .func-box.acc { background: rgba(180,160,60,0.1); border: 1px solid rgba(200,185,80,0.35); }
+  .func-title { font-size: 14px; font-weight: bold; margin-bottom: 8px; font-family: Georgia, serif; }
+  .func-title.teal { color: #3BA5A5; }
+  .func-title.orange { color: #E8782A; }
+  .func-title.gold { color: #C8B950; }
+  .func-list { font-size: 12px; color: #AABBCC; line-height: 1.7; }
+  .func-cite { font-size: 10px; color: #8899AA; margin-top: 10px; font-style: italic; }
+
+  .note-box {
+    background: rgba(255,255,255,0.03); border-radius: 6px; padding: 12px 14px;
+    font-size: 11px; color: #8899AA; line-height: 1.5; font-family: Calibri, Arial, sans-serif;
+  }
+  .note-box strong { color: #AABBCC; }
+
+  .legend {
+    display: flex; gap: 18px; font-size: 11px; color: #8899AA;
+    font-family: Calibri, Arial, sans-serif; align-items: center;
+    margin-top: 10px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 18px; height: 18px; border-radius: 3px; border: 2px solid; }
+
+  .footer {
+    margin-top: 16px; padding-top: 8px; border-top: 1px solid #2B3255;
+    display: flex; justify-content: space-between; font-size: 9px; color: #667799;
+    font-family: Calibri, Arial, sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Prefrontal Cortex &amp; Executive Function</h1>
+  <p>Key regions supporting EF controls</p>
+</div>
+
+<div class="content">
+  <div class="brain-container">
+    <div class="view-label">Lateral View</div>
+    <div class="brain-wrapper" id="brainWrapper">
+      <img id="brainImg"
+           src="brain_lateral_lynch.svg"
+           alt="Brain lateral view — Patrick J. Lynch, medical illustrator"
+           onload="drawOverlay();">
+      <canvas id="overlayCanvas" class="overlay-canvas"></canvas>
+    </div>
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:rgba(42,139,139,0.4); border-color:#3BA5A5;"></div>
+        dlPFC
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:rgba(232,120,42,0.35); border-color:#E8782A;"></div>
+        OFC
+      </div>
+      <div class="legend-item">
+        <div class="legend-swatch" style="background:rgba(180,160,60,0.35); border-color:#C8B950; border-style:dashed;"></div>
+        ACC (medial surface)
+      </div>
+    </div>
+  </div>
+
+  <div class="info-panel">
+    <div class="func-box dlpfc">
+      <div class="func-title teal">Dorsolateral Prefrontal Cortex</div>
+      <div class="func-list">
+        Sustaining and flexibly shifting attention<br>
+        Planning<br>
+        Supports response inhibition<br>
+        Working memory<br>
+        Organizational skills<br>
+        Reasoning &amp; problem-solving<br>
+        Abstract thinking
+      </div>
+      <div class="func-cite">Alvarez &amp; Emory, 2006; Clark et al., 2008</div>
+    </div>
+    <div class="func-box ofc">
+      <div class="func-title orange">Orbitofrontal Cortex</div>
+      <div class="func-list">
+        Evaluating rewards and consequences<br>
+        Monitoring ongoing behavior<br>
+        Socially appropriate behaviors<br>
+        Processing reward-based stimuli
+      </div>
+      <div class="func-cite">Lezak et al., 2004; Rolls &amp; Grabenhorst, 2008</div>
+    </div>
+    <div class="func-box acc">
+      <div class="func-title gold">Anterior Cingulate Cortex</div>
+      <div class="func-list">
+        Monitoring conflict and errors<br>
+        Signaling when adjustments in control are needed<br>
+        Allocating attention and cognitive effort<br>
+        Linking motivation to goal-directed behavior
+      </div>
+      <div class="func-cite">Bush, Luu &amp; Posner, 2000; Botvinick et al., 2004</div>
+    </div>
+    <div class="note-box">
+      <strong>Note:</strong> If the dlPFC is doing the control, the ACC is the system that notices when more control is needed. Inhibition is supported by a broader network, including the right inferior frontal gyrus and anterior cingulate — highlighted regions indicate major prefrontal contributors.
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <span>Brain illustration: Patrick J. Lynch, medical illustrator, Yale University (CC BY 2.5)</span>
+  <span>© Powers, B. 2026</span>
+</div>
+
+<script>
+function drawOverlay() {
+  const img = document.getElementById('brainImg');
+  const canvas = document.getElementById('overlayCanvas');
+  const wrapper = document.getElementById('brainWrapper');
+
+  // Size canvas to match the visible wrapper area
+  const wrapperRect = wrapper.getBoundingClientRect();
+  canvas.width = wrapperRect.width;
+  canvas.height = wrapperRect.height;
+
+  const ctx = canvas.getContext('2d');
+
+  // The SVG viewBox is 518x600.
+  // The image is rendered to fill the wrapper width, with top margin -10px
+  // and bottom cropped. We need to map SVG coordinates to canvas coordinates.
+  const imgRenderedWidth = wrapperRect.width;
+  const imgRenderedHeight = imgRenderedWidth * (600 / 518);
+  const imgOffsetY = -10; // margin-top offset
+
+  // Scale factors: SVG coords -> canvas pixels
+  const scaleX = imgRenderedWidth / 518;
+  const scaleY = imgRenderedHeight / 600;
+
+  function toCanvas(svgX, svgY) {
+    return [svgX * scaleX, svgY * scaleY + imgOffsetY];
+  }
+
+  function drawSmoothRegion(svgPoints, fillColor, strokeColor, lineWidth) {
+    const pts = svgPoints.map(p => toCanvas(p[0], p[1]));
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 0; i < pts.length - 1; i++) {
+      const xc = (pts[i][0] + pts[i+1][0]) / 2;
+      const yc = (pts[i][1] + pts[i+1][1]) / 2;
+      ctx.quadraticCurveTo(pts[i][0], pts[i][1], xc, yc);
+    }
+    const xc = (pts[pts.length-1][0] + pts[0][0]) / 2;
+    const yc = (pts[pts.length-1][1] + pts[0][1]) / 2;
+    ctx.quadraticCurveTo(pts[pts.length-1][0], pts[pts.length-1][1], xc, yc);
+    ctx.closePath();
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = lineWidth || 2.5;
+    ctx.stroke();
+  }
+
+  // ==========================================
+  // DLPFC Region — dorsolateral prefrontal cortex
+  // Upper/superior frontal lobe area in the lateral view
+  // The frontal lobe in the Lynch SVG spans roughly x:30-250, y:10-200
+  // dlPFC is the upper-lateral portion of the frontal lobe
+  // ==========================================
+  const dlpfcPoints = [
+    [62, 115], [72, 90], [88, 70], [108, 52],
+    [130, 38], [155, 28], [180, 22], [205, 20],
+    [228, 22], [248, 30], [262, 42],
+    [270, 58], [272, 78], [268, 100],
+    [260, 120], [248, 138], [232, 152],
+    [212, 162], [190, 168], [168, 170],
+    [145, 168], [125, 162], [108, 152],
+    [92, 140], [78, 128], [68, 118]
+  ];
+  drawSmoothRegion(dlpfcPoints, 'rgba(42, 139, 139, 0.42)', '#3BA5A5', 2.5);
+
+  // ==========================================
+  // OFC Region — orbitofrontal cortex
+  // Inferior/ventral frontal lobe area
+  // In the lateral view, this is the lower frontal area
+  // near where the frontal lobe meets the temporal region
+  // ==========================================
+  const ofcPoints = [
+    [38, 268], [45, 248], [58, 232], [75, 220],
+    [95, 212], [118, 208], [142, 210],
+    [162, 216], [178, 226], [188, 240],
+    [192, 258], [190, 275], [182, 290],
+    [168, 302], [150, 310], [128, 314],
+    [108, 312], [88, 306], [72, 295],
+    [58, 282], [46, 272]
+  ];
+  drawSmoothRegion(ofcPoints, 'rgba(232, 120, 42, 0.40)', '#E8782A', 2.5);
+
+  // ==========================================
+  // ACC Region — anterior cingulate cortex
+  // The ACC sits on the medial surface, wrapping around the corpus callosum.
+  // In a lateral view it's not directly visible, so we indicate its
+  // approximate deep/medial location with a dashed outline.
+  // It sits roughly deep to the medial frontal area, between dlPFC and the midline.
+  // ==========================================
+  const accPoints = [
+    [155, 120], [175, 108], [198, 100], [222, 96],
+    [245, 98], [262, 108], [272, 122],
+    [275, 140], [270, 158], [258, 172],
+    [240, 180], [218, 184], [195, 182],
+    [175, 176], [160, 165], [150, 150],
+    [148, 135]
+  ];
+  // Dashed outline to indicate medial/deep location
+  const accPts = accPoints.map(p => toCanvas(p[0], p[1]));
+  ctx.beginPath();
+  ctx.moveTo(accPts[0][0], accPts[0][1]);
+  for (let i = 0; i < accPts.length - 1; i++) {
+    const xc = (accPts[i][0] + accPts[i+1][0]) / 2;
+    const yc = (accPts[i][1] + accPts[i+1][1]) / 2;
+    ctx.quadraticCurveTo(accPts[i][0], accPts[i][1], xc, yc);
+  }
+  const accXc = (accPts[accPts.length-1][0] + accPts[0][0]) / 2;
+  const accYc = (accPts[accPts.length-1][1] + accPts[0][1]) / 2;
+  ctx.quadraticCurveTo(accPts[accPts.length-1][0], accPts[accPts.length-1][1], accXc, accYc);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(200, 185, 80, 0.18)';
+  ctx.fill();
+  ctx.setLineDash([6, 4]);
+  ctx.strokeStyle = '#C8B950';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ==========================================
+  // Labels with leader lines
+  // ==========================================
+
+  // dlPFC label
+  const dlDot = toCanvas(170, 95);
+  const dlEnd = toCanvas(22, 42);
+  ctx.fillStyle = '#3BA5A5';
+  ctx.beginPath();
+  ctx.arc(dlDot[0], dlDot[1], 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(59,165,165,0.75)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(dlDot[0], dlDot[1]);
+  ctx.lineTo(dlEnd[0], dlEnd[1]);
+  ctx.stroke();
+
+  ctx.fillStyle = '#3BA5A5';
+  ctx.font = 'bold ' + Math.round(14 * scaleX) + 'px Calibri, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('dlPFC', dlEnd[0], dlEnd[1] - 5 * scaleY);
+
+  // OFC label — line goes down-left from dot, text at the endpoint
+  const ofcDot = toCanvas(115, 260);
+  const ofcMid = toCanvas(55, 330);
+  const ofcLineEnd = toCanvas(22, 345);
+  ctx.fillStyle = '#E8782A';
+  ctx.beginPath();
+  ctx.arc(ofcDot[0], ofcDot[1], 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(232,120,42,0.75)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(ofcDot[0], ofcDot[1]);
+  ctx.lineTo(ofcMid[0], ofcMid[1]);
+  ctx.lineTo(ofcLineEnd[0], ofcLineEnd[1]);
+  ctx.stroke();
+
+  // Text positioned below the line endpoint
+  ctx.fillStyle = '#E8782A';
+  ctx.font = 'bold ' + Math.round(14 * scaleX) + 'px Calibri, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('OFC', ofcLineEnd[0], ofcLineEnd[1] + 16 * scaleY);
+
+  // ACC label
+  const accDot = toCanvas(215, 140);
+  const accEnd = toCanvas(380, 180);
+  ctx.fillStyle = '#C8B950';
+  ctx.beginPath();
+  ctx.arc(accDot[0], accDot[1], 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(200,185,80,0.75)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.moveTo(accDot[0], accDot[1]);
+  ctx.lineTo(accEnd[0], accEnd[1]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = '#C8B950';
+  ctx.font = 'bold ' + Math.round(14 * scaleX) + 'px Calibri, Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('ACC', accEnd[0] + 4 * scaleX, accEnd[1] - 2 * scaleY);
+  ctx.font = Math.round(10 * scaleX) + 'px Calibri, Arial, sans-serif';
+  ctx.fillStyle = '#8899AA';
+  ctx.fillText('(medial surface)', accEnd[0] + 4 * scaleX, accEnd[1] + 12 * scaleY);
+
+  // Anterior/Posterior labels
+  ctx.font = 'italic ' + Math.round(11 * scaleX) + 'px Calibri, Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.textAlign = 'left';
+  const antPos = toCanvas(30, 8);
+  ctx.fillText('Anterior', antPos[0], antPos[1]);
+  ctx.textAlign = 'right';
+  const postPos = toCanvas(490, 8);
+  ctx.fillText('Posterior', postPos[0], postPos[1]);
+}
+
+// Redraw on resize
+window.addEventListener('resize', () => {
+  const img = document.getElementById('brainImg');
+  if (img.complete && img.naturalWidth > 0) {
+    drawOverlay();
+  }
+});
+</script>
+</body>
+</html>
